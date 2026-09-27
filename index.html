@@ -20,25 +20,15 @@
 
   <aside class="sidebar">
     <div class="card">
-      <div class="card-hd">题目列表</div>
+      <div class="card-hd">
+        题目列表
+        <span class="tag gray" id="listHint" style="float:right; font-weight:400"></span>
+      </div>
       <ul class="plist" id="plist"></ul>
     </div>
   </aside>
 
   <main style="display:grid; gap:16px; min-width:0;">
-
-    <!-- 管理员后台：只有 owner / admin 能看到 -->
-    <section class="card" id="adminCard" style="display:none">
-      <div class="card-hd">
-        用户管理
-        <span class="tag gray" id="adminHint" style="margin-left:8px"></span>
-      </div>
-      <div class="card-bd">
-        <div id="adminBody">
-          <span style="color:var(--ink-3); font-size:13px;">加载中…</span>
-        </div>
-      </div>
-    </section>
 
     <section class="card">
       <div class="card-bd">
@@ -119,6 +109,96 @@
   </div>
 </div>
 
+<!-- 管理面板：用户管理 + 题目管理 -->
+<div class="modal-mask" id="adminModal">
+  <div class="modal" style="width:min(940px,95vw)">
+    <div class="card-hd tabs">
+      <span class="tabbtn active" data-atab="users">用户管理</span>
+      <span class="tabbtn" data-atab="problems">题目管理</span>
+      <span style="flex:1"></span>
+      <span class="role-badge" id="adminWhoami" style="margin-left:auto"></span>
+    </div>
+    <div class="card-bd" style="max-height:70vh; overflow:auto; min-height:240px">
+      <div id="atab-users"></div>
+      <div id="atab-problems" style="display:none"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="btnAdminClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 题目编辑器 -->
+<div class="modal-mask" id="probModal">
+  <div class="modal" style="width:min(920px,95vw)">
+    <div class="card-hd" id="probModalTitle">编辑题目</div>
+    <div class="card-bd" style="max-height:72vh; overflow:auto">
+
+      <div class="fgrid">
+        <label>题号
+          <input type="text" id="pfId" placeholder="P006">
+        </label>
+        <label>标题
+          <input type="text" id="pfTitle" placeholder="阶乘求和">
+        </label>
+        <label>难度
+          <input type="text" id="pfDiff" placeholder="入门 / 简单 / 中等">
+        </label>
+        <label>排序（小的在前）
+          <input type="text" id="pfOrder" placeholder="0">
+        </label>
+        <label>时间限制（毫秒）
+          <input type="text" id="pfTime" placeholder="1000">
+        </label>
+        <label>内存限制（MB）
+          <input type="text" id="pfMem" placeholder="128">
+        </label>
+      </div>
+
+      <label>标签（用逗号分隔）
+        <input type="text" id="pfTags" placeholder="循环, 边界处理">
+      </label>
+
+      <label>题面（可以直接写 HTML，比如 &lt;p&gt;段落&lt;/p&gt;）
+        <textarea id="pfDesc" class="mono-input" rows="6"></textarea>
+      </label>
+
+      <label>输入格式
+        <textarea id="pfIn" rows="2"></textarea>
+      </label>
+      <label>输出格式
+        <textarea id="pfOut" rows="2"></textarea>
+      </label>
+      <label>提示（可留空）
+        <textarea id="pfHint" rows="2"></textarea>
+      </label>
+
+      <div class="sec-hd">
+        样例
+        <button class="btn btn-sm" id="btnAddSample" style="margin-left:8px">加一个样例</button>
+      </div>
+      <div id="pfSamples"></div>
+
+      <div class="sec-hd">
+        测试点
+        <span class="tag gray">判题用的数据，不展示给学生</span>
+        <button class="btn btn-sm" id="btnAddTest" style="margin-left:8px">加一个测试点</button>
+      </div>
+      <div id="pfTests"></div>
+
+      <label style="display:flex; align-items:center; gap:8px; margin-top:14px">
+        <input type="checkbox" id="pfVisible"> 上架（取消勾选则普通用户看不到这道题）
+      </label>
+
+      <div class="tip" id="pfTip"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="btnProbCancel">取消</button>
+      <button class="btn btn-primary" id="btnProbSave">保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- 站点设置 -->
 <div class="modal-mask" id="modal">
   <div class="modal">
@@ -168,8 +248,8 @@
       </label>
 
       <p class="note">
-        账号由 Supabase 服务端保管，注册后需要点开邮箱验证邮件才能登录。
-        角色分三级：主理人（最高权限）、管理员、普通用户，存在数据库的 profiles 表里。
+        账号和题库都由 Supabase 服务端保管。角色分三级：主理人（最高权限）、管理员、普通用户。
+        题目改到云端后，管理员可以在「管理 → 题目管理」里直接编辑题面和测试点。
       </p>
     </div>
     <div class="modal-foot">
@@ -180,12 +260,13 @@
 </div>
 
 <div class="footer">
-  XB OJ · 判题由 Wandbox 提供 · 账号由 Supabase 提供
+  XB OJ · 判题由 Wandbox 提供 · 账号与题库由 Supabase 提供
 </div>
 
 <script src="problems.js"></script>
 <script src="assets/config.js"></script>
 <script src="assets/auth.js"></script>
+<script src="assets/api.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>
