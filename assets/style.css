@@ -371,6 +371,63 @@ table.rtable td.mono { font-family: var(--mono); font-size: 12px; color: var(--i
   white-space: nowrap;
 }
 
+/* ---------- 管理面板 / 题目编辑器 ---------- */
+.fgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.fgrid label { margin-bottom: 0; }
+
+.modal .card-bd > label > textarea {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  color: var(--ink);
+  background: #fff;
+}
+.modal .card-bd > label > textarea:focus { border-color: var(--sky); }
+.mono-input { font-family: var(--mono) !important; font-size: 13px !important; }
+
+.row-pair {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  background: #fcfdfe;
+}
+.rp-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-bottom: 8px;
+}
+.row-pair .diff textarea {
+  width: 100%;
+  min-height: 68px;
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  resize: vertical;
+  outline: none;
+  background: #fff;
+  color: var(--ink);
+}
+.row-pair .diff textarea:focus { border-color: var(--sky); }
+.row-pair .diff pre { max-height: none; }
+
 .role-badge {
   font-size: 11px;
   padding: 1px 7px;
