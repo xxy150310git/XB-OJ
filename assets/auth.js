@@ -310,9 +310,12 @@ const AUTH = (function () {
     return out;
   }
 
+  /* 给 api.js 用：拿到 supabase 客户端 */
+  async function getClient() { return await loadSupabase(); }
+
   return {
     init, current, register, login, logout, diagnose, updatePassword, sendResetEmail,
-    listUsers, setRole, setBanned,
+    listUsers, setRole, setBanned, getClient,
     getCfg, setCfg, isSupabase, scope, validEmail, isOwner, isAdmin,
     onChange(f) { listeners.push(f); }
   };
