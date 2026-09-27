@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XB OJ - 我的在线评测</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <span class="brand">XB OJ<small>我的在线评测</small></span>
+  <span class="spacer"></span>
+  <span class="top-stat" id="stat"></span>
+  <span id="userArea"></span>
+  <button class="btn" id="btnSettings">设置</button>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="card">
+      <div class="card-hd">题目列表</div>
+      <ul class="plist" id="plist"></ul>
+    </div>
+  </aside>
+
+  <main style="display:grid; gap:16px; min-width:0;">
+
+    <section class="card">
+      <div class="card-bd">
+        <h1 class="ptitle" id="ptitle"></h1>
+        <div class="pmeta" id="pmeta"></div>
+        <div id="pbody"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="editor-bar">
+        <strong style="font-size:13px;">代码</strong>
+        <span class="tag gray">C++ (GCC 13.2, -std=c++17)</span>
+        <span class="spacer" style="flex:1"></span>
+        <button class="btn" id="btnReset">重置代码</button>
+        <button class="btn btn-primary" id="btnSubmit">提交判题</button>
+      </div>
+      <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+      <div class="card-bd selftest">
+        <div class="sec-hd" style="margin-top:0">自测运行（用你自己的输入跑一次，不计分）</div>
+        <textarea id="stdin" placeholder="在这里填自测输入，例如：&#10;1 2"></textarea>
+        <button class="btn" id="btnRun" style="margin-top:8px">运行自测</button>
+      </div>
+    </section>
+
+    <section class="card" id="resultCard">
+      <div class="card-hd">判题结果</div>
+      <div class="card-bd" id="result">
+        <span style="color:var(--ink-3); font-size:13px;">写好代码后点「提交判题」，会自动跑完所有测试点。</span>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- 登录 / 注册 -->
+<div class="modal-mask" id="authModal">
+  <div class="modal" style="width:min(420px,92vw)">
+    <div class="card-hd tabs">
+      <span class="tabbtn active" data-tab="login">登录</span>
+      <span class="tabbtn" data-tab="reg">注册</span>
+    </div>
+    <div class="card-bd">
+
+      <div id="tab-login">
+        <label>邮箱
+          <input type="text" id="lgEmail" placeholder="you@example.com" autocomplete="username">
+        </label>
+        <label>密码
+          <input type="password" id="lgPwd" placeholder="请输入密码" autocomplete="current-password">
+        </label>
+        <div class="tip" id="lgTip"></div>
+        <button class="btn btn-primary" id="btnLogin" style="width:100%; margin-top:4px">登录</button>
+      </div>
+
+      <div id="tab-reg" style="display:none">
+        <label>邮箱
+          <input type="text" id="rgEmail" placeholder="you@example.com" autocomplete="username">
+        </label>
+        <label>昵称
+          <input type="text" id="rgNick" placeholder="留空则自动用邮箱前缀">
+        </label>
+        <label>密码
+          <input type="password" id="rgPwd" placeholder="至少 6 位" autocomplete="new-password">
+        </label>
+        <label>确认密码
+          <input type="password" id="rgPwd2" placeholder="再输一次" autocomplete="new-password">
+        </label>
+        <div class="tip" id="rgTip"></div>
+        <button class="btn btn-primary" id="btnReg" style="width:100%; margin-top:4px">注册</button>
+      </div>
+
+      <p class="note" id="authNote" style="margin-top:14px"></p>
+    </div>
+  </div>
+</div>
+
+<!-- 站点设置 -->
+<div class="modal-mask" id="modal">
+  <div class="modal">
+    <div class="card-hd">站点设置</div>
+    <div class="card-bd">
+      <div class="sec-hd" style="margin-top:0">判题后端</div>
+      <label>
+        判题后端
+        <select id="cfgDriver" style="width:100%; margin-top:4px">
+          <option value="wandbox">Wandbox 公共接口（推荐，免费免注册）</option>
+          <option value="piston">自建 Piston（需要你自己用 Docker 跑一个）</option>
+        </select>
+      </label>
+      <label>
+        Wandbox 接口地址
+        <input type="text" id="cfgWandbox">
+      </label>
+      <label>
+        自建 Piston 接口地址
+        <input type="text" id="cfgPiston">
+      </label>
+      <label>
+        单测试点超时（毫秒）
+        <input type="text" id="cfgTimeout">
+      </label>
+
+      <div class="sec-hd">账号后端</div>
+      <label>
+        账号模式
+        <select id="authDriver" style="width:100%; margin-top:4px">
+          <option value="local">本地账号（默认，零配置，存在浏览器里）</option>
+          <option value="supabase">Supabase（真服务端账号，支持邮箱验证邮件）</option>
+        </select>
+      </label>
+      <label>
+        Supabase Project URL
+        <input type="text" id="authSbUrl" placeholder="https://xxxx.supabase.co">
+      </label>
+      <label>
+        Supabase API key
+        <input type="text" id="authSbKey" placeholder="sb_publishable_... 或 eyJhbGciOi...">
+      </label>
+
+      <button class="btn" id="btnDiag" style="margin-top:6px">测试连接</button>
+      <div id="diagOut" style="margin-top:10px"></div>
+
+      <p class="note">
+        <strong>判题</strong>：原 Piston 公共接口已于 2026 年 2 月改为白名单制，不再对公众开放，本站默认用 Wandbox。<br>
+        <strong>账号</strong>：本地模式零配置即可用，但换设备会丢；想要真正的邮箱验证和跨设备同步，
+        去 supabase.com 免费建个项目，把 Project URL 和 anon key 填进来即可。
+        国内访问 <code>*.supabase.co</code> 网络不稳定，连不上时会自动退回本地模式。
+      </p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="btnCfgCancel">取消</button>
+      <button class="btn btn-primary" id="btnCfgSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  XB OJ · 纯静态站点，托管于 GitHub Pages · 判题由 Wandbox 公共接口提供
+</div>
+
+<script src="problems.js"></script>
+<script src="assets/auth.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
