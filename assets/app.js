@@ -393,9 +393,19 @@ function openSettings() {
   $('#cfgPiston').value = cfg.pistonUrl;
   $('#cfgTimeout').value = cfg.timeout;
   const ac = AUTH.getCfg();
-  $('#authDriver').value = ac.driver;
   $('#authSbUrl').value = ac.supabaseUrl;
   $('#authSbKey').value = ac.supabaseKey;
+  $('#cfgNewPwd').value = '';
+  showTip('pwdTip', '');
+  $('#diagOut').innerHTML = '';
+
+  const u = AUTH.current();
+  $('#cfgAccount').innerHTML = u
+    ? '已登录 <strong>' + esc(u.nick) + '</strong>　' + esc(u.email) +
+      '　角色：<strong>' + esc(ROLE_LABEL[u.role] || u.role) + '</strong>' +
+      (u.profileMissing ? '　<span class="s-err">profiles 表未初始化，请执行 supabase-setup.sql</span>' : '')
+    : '当前未登录，修改密码和后台管理需要先登录。';
+
   $('#modal').classList.add('show');
 }
 function closeSettings() {
@@ -408,7 +418,6 @@ function saveSettings() {
   cfg.timeout = parseInt($('#cfgTimeout').value, 10) || DEFAULT_CFG.timeout;
   save(LS.cfg, cfg);
   AUTH.setCfg({
-    driver: $('#authDriver').value,
     supabaseUrl: $('#authSbUrl').value.trim(),
     supabaseKey: $('#authSbKey').value.trim()
   });
@@ -425,10 +434,13 @@ function renderUserArea() {
     $('#btnAuth').onclick = () => openAuth('login');
   } else {
     const initial = String(u.nick || u.email || '?').trim().charAt(0).toUpperCase();
+    const role = ROLE_LABEL[u.role] || '普通用户';
+    const roleCls = u.role === 'owner' ? 'role-owner' : (u.role === 'admin' ? 'role-admin' : '');
     el.innerHTML =
       '<span class="user-chip" title="' + esc(u.email) + '">' +
         '<span class="avatar">' + esc(initial) + '</span>' +
         '<span class="unick">' + esc(u.nick) + '</span>' +
+        '<span class="role-badge ' + roleCls + '">' + esc(role) + '</span>' +
       '</span>' +
       '<button class="btn" id="btnLogout" style="margin-left:8px">退出</button>';
     $('#btnLogout').onclick = () => { flushCode(); AUTH.logout(); };
@@ -453,11 +465,9 @@ function openAuth(tab) {
   switchTab(tab || 'login');
   showTip('lgTip', '');
   showTip('rgTip', '');
-  const ac = AUTH.getCfg();
-  $('#authNote').innerHTML = ac.driver === 'supabase'
-    ? '当前是 <strong>Supabase</strong> 账号：注册后会收到一封验证邮件，点开激活后才能登录。'
-    : '当前是<strong>本地账号</strong>：账号存在这台电脑的浏览器里，换设备会丢失。' +
-      '想要真正的邮箱验证和跨设备同步，去「设置」里切换到 Supabase。';
+  $('#authNote').innerHTML =
+    '账号由 Supabase 服务端保管，一台设备注册、换设备也能登录。<br>' +
+    '新用户注册后要先去邮箱点开验证邮件，才能登录进来。';
   $('#authModal').classList.add('show');
 }
 function closeAuth() { $('#authModal').classList.remove('show'); }
@@ -494,10 +504,109 @@ async function doRegister() {
   }
 }
 
+/* ============ 管理员后台：用户管理 ============ */
+
+let adminUsers = [];
+
+async function renderAdmin() {
+  const card = $('#adminCard');
+  const u = AUTH.current();
+  if (!u || !AUTH.isAdmin()) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = '';
+  $('#adminHint').textContent = AUTH.isOwner() ? '主理人：可改角色、可封禁' : '管理员：仅可查看';
+
+  const r = await AUTH.listUsers();
+  if (!r.ok) {
+    $('#adminBody').innerHTML =
+      '<div class="tip err">读取用户列表失败：' + esc(r.msg) + '</div>' +
+      '<div class="note" style="margin-top:8px">多半是 profiles 表还没建好，' +
+      '去 Supabase 后台的 SQL Editor 执行 <code>supabase-setup.sql</code>。</div>';
+    return;
+  }
+  adminUsers = r.users;
+
+  let html = '<table class="rtable"><thead><tr>' +
+    '<th>用户</th><th>角色</th><th>状态</th><th>注册时间</th><th>操作</th>' +
+    '</tr></thead><tbody>';
+
+  adminUsers.forEach(p => {
+    const isMe = p.id === u.id;
+    const canEdit = AUTH.isOwner() && !isMe;   // 不能改自己的角色，防止把自己降权
+    const roleCls = p.role === 'owner' ? 'role-owner' : (p.role === 'admin' ? 'role-admin' : '');
+    html += '<tr>' +
+      '<td>' + esc(p.nick || '(无昵称)') + '<div class="mono" style="font-size:12px;color:var(--ink-3)">' + esc(p.email) + '</div></td>' +
+      '<td><span class="role-badge ' + roleCls + '">' + esc(ROLE_LABEL[p.role] || p.role) + '</span></td>' +
+      '<td>' + (p.banned ? '<span class="s-wa">已停用</span>' : '正常') + '</td>' +
+      '<td class="mono">' + esc(String(p.created_at || '').slice(0, 10)) + '</td>' +
+      '<td>' + (canEdit
+        ? '<button class="btn btn-sm" data-act="admin" data-id="' + p.id + '">设为管理员</button> ' +
+          '<button class="btn btn-sm" data-act="user" data-id="' + p.id + '">设为普通</button> ' +
+          '<button class="btn btn-sm" data-act="ban" data-id="' + p.id + '">' + (p.banned ? '解除停用' : '停用') + '</button>'
+        : '<span style="color:var(--ink-3);font-size:12px">' + (isMe ? '（自己）' : '无权限') + '</span>') +
+      '</td>' +
+    '</tr>';
+  });
+  html += '</tbody></table>';
+  html += '<div class="note" style="margin-top:10px">共 ' + adminUsers.length + ' 个用户。' +
+          '停用后该用户下次登录会被强制登出。角色改动即时生效。</div>';
+
+  $('#adminBody').innerHTML = html;
+
+  $('#adminBody').querySelectorAll('button[data-act]').forEach(b => {
+    b.onclick = async () => {
+      const id = b.dataset.id;
+      const act = b.dataset.act;
+      b.disabled = true;
+      let res;
+      if (act === 'ban') {
+        const p = adminUsers.find(x => x.id === id);
+        res = await AUTH.setBanned(id, !(p && p.banned));
+      } else {
+        res = await AUTH.setRole(id, act);
+      }
+      b.disabled = false;
+      if (!res.ok) { alert('操作失败：' + res.msg); return; }
+      renderAdmin();
+    };
+  });
+}
+
+/* 修改密码（已登录状态下直接改） */
+async function doChangePwd() {
+  const pwd = $('#cfgNewPwd').value;
+  if (!pwd) return showTip('pwdTip', '请先填新密码');
+  if (!AUTH.current()) return showTip('pwdTip', '要先登录才能改密码');
+  $('#btnChangePwd').disabled = true;
+  showTip('pwdTip', '提交中…');
+  const r = await AUTH.updatePassword(pwd);
+  $('#btnChangePwd').disabled = false;
+  if (r.ok) {
+    $('#cfgNewPwd').value = '';
+    showTip('pwdTip', r.msg, true);
+  } else {
+    showTip('pwdTip', r.msg);
+  }
+}
+
+/* 忘记密码：让 Supabase 发一封重置邮件 */
+async function doForgot() {
+  const email = $('#lgEmail').value.trim();
+  if (!email) return showTip('lgTip', '先在上面的邮箱框里填你的邮箱，再点忘记密码');
+  $('#btnForgot').style.pointerEvents = 'none';
+  showTip('lgTip', '正在发送重置邮件…');
+  const r = await AUTH.sendResetEmail(email);
+  $('#btnForgot').style.pointerEvents = '';
+  showTip('lgTip', r.msg, r.ok);
+}
+
 /* 登录状态变化时：重新加载该账号的做题记录，刷新界面 */
 AUTH.onChange(() => {
   reloadUserData();
   renderUserArea();
+  renderAdmin();
   if (current) renderProblem(); else renderList();
 });
 
@@ -533,14 +642,12 @@ function init() {
     el.innerHTML = '<div class="tip">正在诊断…</div>';
     /* 先把表单里填的内容应用上，免得用户改了却没保存 */
     AUTH.setCfg({
-      driver: $('#authDriver').value,
       supabaseUrl: $('#authSbUrl').value.trim(),
       supabaseKey: $('#authSbKey').value.trim()
     });
     const d = await AUTH.diagnose();
     el.innerHTML =
       '<div class="tip">' +
-        '<div>账号模式　' + esc(d.mode) + '</div>' +
         '<div>项目地址　' + esc(d.url) + '</div>' +
         '<div>Key 已填　' + (d.hasKey ? '是' : '否') + '</div>' +
         '<div>SDK 状态　' + esc(d.sdk) + '（来源 ' + esc(d.sdkHost) + '）</div>' +
@@ -548,6 +655,8 @@ function init() {
         '<div style="margin-top:8px">' + esc(d.detail) + '</div>' +
       '</div>';
   };
+  $('#btnChangePwd').onclick = doChangePwd;
+  $('#btnForgot').onclick = doForgot;
   $('#btnLogin').onclick = doLogin;
   $('#btnReg').onclick = doRegister;
   document.querySelectorAll('#authModal .tabbtn').forEach(b => {
